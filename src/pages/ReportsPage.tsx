@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { SectionHeader, Card, Button } from '../App';
+import { apiFetch } from '../lib/api';
 
 export default function ReportsPage() {
   const [report, setReport] = useState<any>(null);
 
   const generate = async () => {
-    const response = await fetch('/api/reports/generate', {
+    const response = await apiFetch('/api/reports/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ caseId: 'INV-1001', investigationSummary: 'Credential stuffing campaign against privileged user accounts.', investigator: 'Marcus Chen' }),
@@ -30,7 +31,9 @@ export default function ReportsPage() {
     const content = `Case ID: ${report.caseId}\nInvestigator: ${report.investigatorDetails}\nSummary: ${report.investigationSummary}\nIntegrity: ${report.integrityStatus}\nBlockchain: ${report.blockchainVerification}`;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    printWindow.document.write(`<pre>${content}</pre>`);
+    const pre = printWindow.document.createElement('pre');
+    pre.textContent = content;
+    printWindow.document.body.appendChild(pre);
     printWindow.document.close();
     printWindow.focus();
     printWindow.print();

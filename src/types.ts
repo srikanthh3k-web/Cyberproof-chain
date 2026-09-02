@@ -92,6 +92,9 @@ export interface DashboardData {
     activeInvestigations: number;
     blockchainRecords: number;
     criticalThreats: number;
+    totalCases: number;
+    openAlerts: number;
+    custodyEvents: number;
   };
   metrics: { label: string; value: number; suffix: string }[];
   evidenceTrend: number[];

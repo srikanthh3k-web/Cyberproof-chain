@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Activity, Database, Files, ShieldCheck, Cpu, AlertTriangle, RefreshCw } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { StatCard, SectionHeader, StatusBadge, Card, EmptyState, LoadingState } from '../App';
+import { apiFetch } from '../lib/api';
 import { DashboardData } from '../types';
 
 const COLORS = ['#49c4ff', '#8b5cf6', '#f59e0b', '#22c55e'];
@@ -15,7 +16,7 @@ export default function DashboardPage() {
   const fetchDashboard = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/dashboard');
+      const response = await apiFetch('/api/dashboard');
       const payload = await response.json();
       setData(payload);
     } catch (error) {
@@ -54,6 +55,9 @@ export default function DashboardPage() {
         <div onClick={() => navigateToPath('/investigations')} style={{ cursor: 'pointer' }}><StatCard label="Active Investigations" value={String(data.summary.activeInvestigations)} icon={<Activity size={18} />} tone="purple" /></div>
         <div onClick={() => navigateToPath('/blockchain')} style={{ cursor: 'pointer' }}><StatCard label="Blockchain Records" value={String(data.summary.blockchainRecords)} icon={<Database size={18} />} tone="cyan" /></div>
         <div onClick={() => navigateToPath('/threat-intelligence')} style={{ cursor: 'pointer' }}><StatCard label="Critical Threats" value={String(data.summary.criticalThreats)} icon={<Cpu size={18} />} tone="amber" /></div>
+        <div onClick={() => navigateToPath('/investigations')} style={{ cursor: 'pointer' }}><StatCard label="Total Cases" value={String(data.summary.totalCases)} icon={<Files size={18} />} tone="cyan" /></div>
+        <div onClick={() => navigateToPath('/alerts')} style={{ cursor: 'pointer' }}><StatCard label="Open Alerts" value={String(data.summary.openAlerts)} icon={<AlertTriangle size={18} />} tone="red" /></div>
+        <div onClick={() => navigateToPath('/custody')} style={{ cursor: 'pointer' }}><StatCard label="Custody Events" value={String(data.summary.custodyEvents)} icon={<ShieldCheck size={18} />} tone="green" /></div>
       </div>
 
       <div className="grid-2" style={{ marginTop: 20 }}>

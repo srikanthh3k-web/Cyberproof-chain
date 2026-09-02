@@ -3,12 +3,16 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run frontend\"",
+    "dev": "concurrently --kill-others \"npm run server\" \"npm run frontend\"",
     "frontend": "vite --host 0.0.0.0",
     "server": "node backend/server.js",
+    "start": "node backend/server.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "npm run typecheck",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "server:dev": "node --watch backend/server.js"
+    "server:dev": "node --watch backend/server.js",
+    "test": "node --test backend/server.test.js backend/audit-logs.test.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

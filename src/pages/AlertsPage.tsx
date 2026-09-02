@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { SectionHeader, Card, StatusBadge } from '../App';
+import { apiFetch } from '../lib/api';
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<any[]>([]);
@@ -7,7 +8,7 @@ export default function AlertsPage() {
   const [filter, setFilter] = useState('ALL');
 
   const fetchAlerts = async () => {
-    const response = await fetch('/api/alerts');
+    const response = await apiFetch('/api/alerts');
     const data = await response.json();
     setAlerts(data);
   };
@@ -25,7 +26,7 @@ export default function AlertsPage() {
   }, [alerts, filter, query]);
 
   const updateAlert = async (id: string, patch: Partial<{ resolved: boolean; type: string }>) => {
-    const response = await fetch(`/api/alerts/${id}`, {
+    const response = await apiFetch(`/api/alerts/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),
@@ -36,7 +37,7 @@ export default function AlertsPage() {
   };
 
   const deleteAlert = async (id: string) => {
-    const response = await fetch(`/api/alerts/${id}`, { method: 'DELETE' });
+    const response = await apiFetch(`/api/alerts/${id}`, { method: 'DELETE' });
     if (response.ok) {
       await fetchAlerts();
     }

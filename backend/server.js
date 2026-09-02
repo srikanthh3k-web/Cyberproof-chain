@@ -13,12 +13,19 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
-const JWT_SECRET = process.env.JWT_SECRET || 'cyberproof-local-dev-secret';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Aurexa@Admin#2026';
+const FRONTEND_URL = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173';
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || crypto.randomBytes(24).toString('base64url');
 
 app.use(helmet());
-app.use(cors({ origin: CLIENT_URL, credentials: true }));
+const allowedOrigins = FRONTEND_URL.split(',').map((origin) => origin.trim()).filter(Boolean);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Origin is not allowed by CORS'));
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false }));
@@ -48,7 +55,7 @@ const demoData = {
     { id: 'EVD-1043', filename: 'phishing_email.eml', fileType: 'EML', fileSize: '412 KB', sha256: '91a2db0fda0e39af201f5c019218d0c9f3051f1aa3cb1fbc598d76d36b1234e2', createdTime: '2026-08-29T11:06:10Z', uploadedBy: 'Marcus Chen', investigationId: 'INV-1002', integrityStatus: 'VERIFIED', blockchainTxId: 'TX-1043', currentCustodian: 'Ava Patel', tampered: false },
     { id: 'EVD-1044', filename: 'memory_dump.raw', fileType: 'RAW', fileSize: '482 MB', sha256: 'e2865835d6a5c50f06efab0d2845f28d68154089a6a4d4f1b1c7c49c0c2b09d8', createdTime: '2026-08-28T08:52:13Z', uploadedBy: 'Ava Patel', investigationId: 'INV-1003', integrityStatus: 'VERIFIED', blockchainTxId: 'TX-1044', currentCustodian: 'Samuel Reed', tampered: false },
     { id: 'EVD-1045', filename: 'log_traffic.csv', fileType: 'CSV', fileSize: '760 KB', sha256: '44f1d53c99810d91ce7f6757ca0ca0b3b6e6d7a1ef7a4a25b3d90d5d13b4a91', createdTime: '2026-08-16T14:18:40Z', uploadedBy: 'Marcus Chen', investigationId: 'INV-1004', integrityStatus: 'VERIFIED', blockchainTxId: 'TX-1045', currentCustodian: 'Nina Gomez', tampered: false },
-    { id: 'EVD-1046', filename: 'dns_capture.pcap', fileType: 'PCAP', fileSize: '8.6 MB', sha256: 'd87f5d4e7cb1632319efc2a429d43f21908bc8d2d92d2d91036c048a7d7b0d1d', createdTime: '2026-08-24T15:10:22Z', uploadedBy: 'Ava Patel', investigationId: 'INV-1005', integrityStatus: 'TAMPERED', blockchainTxId: 'TX-1046', currentCustodian: 'Marcus Chen', tampered: true },
+    { id: 'EVD-1046', filename: 'dns_capture.pcap', fileType: 'PCAP', fileSize: '8.6 MB', sha256: '28226c00e25e4bca5038bc75a7e3d8947ad0818016d7419e44c86168964ceab6', content: 'demo dns capture evidence', registeredContent: 'demo dns capture evidence', createdTime: '2026-08-24T15:10:22Z', uploadedBy: 'Ava Patel', investigationId: 'INV-1005', integrityStatus: 'TAMPERED', blockchainTxId: 'TX-1046', currentCustodian: 'Marcus Chen', tampered: true },
     { id: 'EVD-1047', filename: 'device_snapshot.img', fileType: 'IMG', fileSize: '12.3 GB', sha256: '92f1db2e2ba1d4a3bd7afae4e33b56d9980f7467d16a005c1b96873b4f31707a', createdTime: '2026-08-11T06:01:51Z', uploadedBy: 'Nina Gomez', investigationId: 'INV-1006', integrityStatus: 'VERIFIED', blockchainTxId: 'TX-1047', currentCustodian: 'Ava Patel', tampered: false },
     { id: 'EVD-1048', filename: 'incident_report.pdf', fileType: 'PDF', fileSize: '3.2 MB', sha256: 'c9a8d2ec31f7c98a7a8d254fa0ea3470c128f786a7d444de43f09c7e17a1df4c', createdTime: '2026-08-22T09:44:11Z', uploadedBy: 'Samuel Reed', investigationId: 'INV-1007', integrityStatus: 'VERIFIED', blockchainTxId: 'TX-1048', currentCustodian: 'Marcus Chen', tampered: false },
     { id: 'EVD-1049', filename: 'auth_logs.json', fileType: 'JSON', fileSize: '2.1 MB', sha256: 'dda4f7d5d5b9bc3a9836b89b5dfe3f0f0f5f5cb14b3dbd8fe0275fe885d18867', createdTime: '2026-08-09T18:23:44Z', uploadedBy: 'Ava Patel', investigationId: 'INV-1008', integrityStatus: 'VERIFIED', blockchainTxId: 'TX-1049', currentCustodian: 'Nina Gomez', tampered: false },
@@ -163,7 +170,46 @@ function generateHash(payload) {
   return crypto.createHash('sha256').update(normalized).digest('hex');
 }
 
-function buildBlock(previousHash, evidenceId, txId, txAction = 'EVIDENCE_REGISTERED') {
+demoData.evidence.forEach((evidence) => {
+  if (typeof evidence.content !== 'string') {
+    evidence.content = `${evidence.filename} demo evidence`;
+    evidence.registeredContent = evidence.content;
+    evidence.sha256 = generateHash(evidence.content);
+  } else if (typeof evidence.registeredContent !== 'string') {
+    evidence.registeredContent = evidence.content;
+  }
+});
+
+function verifyEvidence(evidence) {
+  const originalHash = evidence.sha256;
+  const currentHash = generateHash(evidence.content);
+  const tampered = originalHash !== currentHash;
+  const timestamp = new Date().toISOString();
+  const action = tampered ? 'TAMPER_DETECTED' : 'EVIDENCE_VERIFIED';
+  const transactionId = `TX-${Math.floor(1000 + Math.random() * 9000)}`;
+
+  evidence.integrityStatus = tampered ? 'TAMPERED' : 'VERIFIED';
+  evidence.tampered = tampered;
+  demoData.transactions.unshift({ txId: transactionId, evidenceId: evidence.id, action, timestamp, hash: currentHash, status: tampered ? 'REJECTED' : 'CONFIRMED' });
+  buildBlock(demoData.blockchain[demoData.blockchain.length - 1]?.hash || '0000GENESIS', evidence.id, transactionId, action, currentHash, tampered ? 'REJECTED' : 'CONFIRMED');
+  demoData.custodyEvents.unshift({ timestamp, evidenceId: evidence.id, user: 'System', action: tampered ? 'Tampering Detected' : 'Verified', location: 'Verification Portal', signature: 'SHA256-Fingerprint', transactionId });
+  if (tampered) {
+    demoData.alerts.unshift({ id: `ALT-${Date.now()}`, type: 'CRITICAL', title: 'Evidence tampering detected', message: `${evidence.id} fingerprint mismatch detected during verification.`, time: timestamp, resolved: false });
+  }
+
+  return {
+    evidenceId: evidence.id,
+    originalHash,
+    currentHash,
+    tampered,
+    status: tampered ? 'TAMPERING_DETECTED' : 'VERIFIED',
+    blockchainTxId: transactionId,
+    verificationHistory: [{ timestamp, result: tampered ? 'TAMPERING_DETECTED' : 'VERIFIED' }],
+    explanation: tampered ? 'The evidence fingerprint no longer matches the cryptographic fingerprint recorded during acquisition.' : 'Evidence integrity verified against the stored hash.',
+  };
+}
+
+function buildBlock(previousHash, evidenceId, txId, txAction = 'EVIDENCE_REGISTERED', evidenceHash, transactionStatus = 'CONFIRMED') {
   const previousBlock = demoData.blockchain[demoData.blockchain.length - 1];
   const blockIndex = previousBlock ? previousBlock.blockIndex + 1 : 100;
   const timestamp = new Date().toISOString();
@@ -183,7 +229,7 @@ function buildBlock(previousHash, evidenceId, txId, txAction = 'EVIDENCE_REGISTE
     hash: `0x${hash.slice(0, 16)}`,
     timestamp,
     nonce,
-    transactions: [{ txId, type: txAction, evidenceId, hash: generateHash(evidenceId), status: 'CONFIRMED' }],
+    transactions: [{ txId, type: txAction, evidenceId, hash: evidenceHash || generateHash(evidenceId), status: transactionStatus }],
     evidenceIds,
   };
   demoData.blockchain.push(block);
@@ -209,7 +255,7 @@ function demoForensicsResult(input = {}) {
 }
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Cyberproof Chain backend is running', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'cyberproof-chain-api' });
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -271,13 +317,15 @@ app.get('/api/users', authMiddleware, authorizeRoles('SUPER_ADMIN', 'ADMIN', 'LE
   res.json(demoData.users.map(({ passwordHash, ...user }) => user));
 });
 
-app.get('/api/dashboard', (req, res) => {
+app.get('/api/dashboard', authMiddleware, (req, res) => {
   const totalEvidence = demoData.evidence.length;
   const verifiedEvidence = demoData.evidence.filter((item) => item.integrityStatus === 'VERIFIED').length;
   const tamperedEvidence = demoData.evidence.filter((item) => item.tampered).length;
   const activeInvestigations = demoData.investigations.filter((item) => item.status !== 'ARCHIVED' && item.status !== 'RESOLVED').length;
   const blockchainRecords = demoData.blockchain.reduce((sum, block) => sum + block.transactions.length, 0);
   const criticalThreats = demoData.threatIntel.filter((item) => item.riskScore >= 80).length;
+  const openAlerts = demoData.alerts.filter((alert) => !alert.resolved).length;
+  const custodyEvents = demoData.custodyEvents.length;
 
   res.json({
     summary: {
@@ -287,6 +335,9 @@ app.get('/api/dashboard', (req, res) => {
       activeInvestigations,
       blockchainRecords,
       criticalThreats,
+      totalCases: demoData.investigations.length,
+      openAlerts,
+      custodyEvents,
     },
     metrics: [
       { label: 'Evidence Records', value: totalEvidence, suffix: '' },
@@ -332,11 +383,11 @@ app.get('/api/dashboard', (req, res) => {
   });
 });
 
-app.get('/api/investigations', (req, res) => {
+app.get('/api/investigations', authMiddleware, (req, res) => {
   res.json(demoData.investigations);
 });
 
-app.post('/api/investigations', (req, res) => {
+app.post('/api/investigations', authMiddleware, (req, res) => {
   const payload = req.body || {};
   const newInv = {
     id: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -353,7 +404,7 @@ app.post('/api/investigations', (req, res) => {
   res.status(201).json(newInv);
 });
 
-app.patch('/api/investigations/:id', (req, res) => {
+app.patch('/api/investigations/:id', authMiddleware, (req, res) => {
   const investigation = demoData.investigations.find((entry) => entry.id === req.params.id);
   if (!investigation) return res.status(404).json({ error: 'Investigation not found' });
 
@@ -366,7 +417,7 @@ app.patch('/api/investigations/:id', (req, res) => {
   return res.json(investigation);
 });
 
-app.delete('/api/investigations/:id', (req, res) => {
+app.delete('/api/investigations/:id', authMiddleware, (req, res) => {
   const index = demoData.investigations.findIndex((entry) => entry.id === req.params.id);
   if (index === -1) return res.status(404).json({ error: 'Investigation not found' });
 
@@ -374,11 +425,11 @@ app.delete('/api/investigations/:id', (req, res) => {
   return res.json({ success: true, removed });
 });
 
-app.get('/api/evidence', (req, res) => {
+app.get('/api/evidence', authMiddleware, (req, res) => {
   res.json(demoData.evidence);
 });
 
-app.post('/api/evidence/upload', (req, res) => {
+app.post('/api/evidence/upload', authMiddleware, (req, res) => {
   const payload = req.body || {};
   if (!payload.filename || !payload.content) {
     return res.status(400).json({ error: 'File name and content are required' });
@@ -396,6 +447,8 @@ app.post('/api/evidence/upload', (req, res) => {
     fileType,
     fileSize: payload.fileSize || '1.2 MB',
     sha256,
+    content: normalizedContent,
+    registeredContent: normalizedContent,
     createdTime: new Date().toISOString(),
     uploadedBy: payload.uploadedBy || 'investigator@cyberproof.local',
     investigationId: payload.investigationId || demoData.investigations[0].id,
@@ -435,41 +488,25 @@ app.post('/api/evidence/upload', (req, res) => {
   });
 });
 
-app.get('/api/evidence/:id', (req, res) => {
+app.get('/api/evidence/:id', authMiddleware, (req, res) => {
   const evidence = demoData.evidence.find((item) => item.id === req.params.id);
   if (!evidence) return res.status(404).json({ error: 'Evidence not found' });
   res.json({ evidence, custody: demoData.custodyEvents, verification: [{ hash: evidence.sha256, status: evidence.integrityStatus }] });
 });
 
-app.post('/api/evidence/:id/verify', (req, res) => {
+app.post('/api/evidence/:id/verify', authMiddleware, (req, res) => {
   const evidence = demoData.evidence.find((item) => item.id === req.params.id);
   if (!evidence) return res.status(404).json({ error: 'Evidence not found' });
-  const originalHash = evidence.sha256;
-  const currentHash = req.body.currentHash || originalHash;
-  const tampered = originalHash !== currentHash;
-
-  evidence.integrityStatus = tampered ? 'TAMPERED' : 'VERIFIED';
-  evidence.tampered = tampered;
-
-  res.json({
-    evidenceId: evidence.id,
-    originalHash,
-    currentHash,
-    tampered,
-    status: tampered ? 'TAMPERING DETECTED' : 'EVIDENCE INTEGRITY VERIFIED',
-    blockchainTxId: evidence.blockchainTxId,
-    verificationHistory: [{ timestamp: new Date().toISOString(), result: tampered ? 'TAMPERED' : 'VERIFIED' }],
-    explanation: tampered ? 'The evidence fingerprint no longer matches the cryptographic fingerprint recorded during acquisition.' : 'Evidence integrity verified against the stored hash.'
-  });
+  res.json(verifyEvidence(evidence));
 });
 
-app.get('/api/evidence/:id/custody', (req, res) => {
+app.get('/api/evidence/:id/custody', authMiddleware, (req, res) => {
   const evidenceId = req.params.id;
   const events = demoData.custodyEvents.filter((event) => event.evidenceId === evidenceId || event.transactionId === evidenceId);
   res.json(events);
 });
 
-app.post('/api/evidence/:id/transfer', (req, res) => {
+app.post('/api/evidence/:id/transfer', authMiddleware, (req, res) => {
   const evidence = demoData.evidence.find((item) => item.id === req.params.id);
   const { custodian, location } = req.body || {};
   if (!evidence) return res.status(404).json({ error: 'Evidence not found' });
@@ -486,15 +523,15 @@ app.post('/api/evidence/:id/transfer', (req, res) => {
   res.json({ message: 'Custody transferred', evidence });
 });
 
-app.get('/api/blockchain/blocks', (req, res) => {
+app.get('/api/blockchain/blocks', authMiddleware, (req, res) => {
   res.json(demoData.blockchain);
 });
 
-app.get('/api/blockchain/transactions', (req, res) => {
+app.get('/api/blockchain/transactions', authMiddleware, (req, res) => {
   res.json(demoData.transactions);
 });
 
-app.get('/api/blockchain/validate', (req, res) => {
+app.get('/api/blockchain/validate', authMiddleware, (req, res) => {
   let valid = true;
   for (let i = 1; i < demoData.blockchain.length; i += 1) {
     const previous = demoData.blockchain[i - 1];
@@ -507,7 +544,7 @@ app.get('/api/blockchain/validate', (req, res) => {
   res.json({ valid, network: 'LOCAL DEMONSTRATION NETWORK', lastBlock: demoData.blockchain[demoData.blockchain.length - 1] });
 });
 
-app.post('/api/forensics/analyze', (req, res) => {
+app.post('/api/forensics/analyze', authMiddleware, (req, res) => {
   const payload = req.body || {};
   const result = demoForensicsResult({
     threat: payload.threat || 'Credential Access',
@@ -526,7 +563,7 @@ app.post('/api/forensics/analyze', (req, res) => {
   });
 });
 
-app.get('/api/threat-intelligence/:indicator', (req, res) => {
+app.get('/api/threat-intelligence/:indicator', authMiddleware, (req, res) => {
   const indicator = (req.params.indicator || '').toLowerCase();
   const record = demoData.threatIntel.find((entry) => {
     const values = [entry.ip, entry.domain, entry.url, entry.fileHash];
@@ -540,7 +577,7 @@ app.get('/api/threat-intelligence/:indicator', (req, res) => {
   res.json({ ...record, mode: 'LOCAL DEMO DATA' });
 });
 
-app.post('/api/reports/generate', (req, res) => {
+app.post('/api/reports/generate', authMiddleware, (req, res) => {
   const payload = req.body || {};
   const report = {
     caseId: payload.caseId || 'INV-1001',
@@ -566,33 +603,33 @@ app.get('/api/security-events', authMiddleware, (req, res) => {
   res.json(demoData.securityEvents);
 });
 
-app.get('/api/alerts', (req, res) => {
+app.get('/api/alerts', authMiddleware, (req, res) => {
   res.json(demoData.alerts);
 });
 
-app.patch('/api/alerts/:id', (req, res) => {
+app.patch('/api/alerts/:id', authMiddleware, (req, res) => {
   const alert = demoData.alerts.find((entry) => entry.id === req.params.id);
   if (!alert) return res.status(404).json({ error: 'Alert not found' });
   Object.assign(alert, req.body || {});
   return res.json(alert);
 });
 
-app.delete('/api/alerts/:id', (req, res) => {
+app.delete('/api/alerts/:id', authMiddleware, (req, res) => {
   const index = demoData.alerts.findIndex((entry) => entry.id === req.params.id);
   if (index === -1) return res.status(404).json({ error: 'Alert not found' });
   const [removed] = demoData.alerts.splice(index, 1);
   return res.json({ success: true, removed });
 });
 
-app.get('/api/custody', (req, res) => {
+app.get('/api/custody', authMiddleware, (req, res) => {
   res.json(demoData.custodyEvents);
 });
 
-app.get('/api/team', (req, res) => {
+app.get('/api/team', authMiddleware, (req, res) => {
   res.json(demoData.users);
 });
 
-app.get('/api/security-health', (req, res) => {
+app.get('/api/security-health', authMiddleware, authorizeRoles('SUPER_ADMIN', 'ADMIN'), (req, res) => {
   res.json({
     authentication: 'Secure',
     api: 'Protected',
@@ -610,62 +647,54 @@ app.get('/api/verification/:identifier', (req, res) => {
   const identifier = req.params.identifier;
   const record = demoData.evidence.find((item) => item.id === identifier || item.blockchainTxId === identifier || item.sha256 === identifier);
   if (!record) return res.status(404).json({ error: 'No record found', status: 'NOT FOUND' });
+  const verification = verifyEvidence(record);
 
   res.json({
     evidenceId: record.id,
     evidenceFound: true,
-    hashMatch: record.integrityStatus === 'VERIFIED' || record.sha256 === identifier,
+    hashMatch: !verification.tampered,
     blockchainRecord: !!record.blockchainTxId,
     timestamp: record.createdTime,
     integrityStatus: record.integrityStatus,
-    hash: record.sha256,
-    originalHash: record.sha256,
-    currentHash: record.sha256,
+    hash: verification.currentHash,
+    originalHash: verification.originalHash,
+    currentHash: verification.currentHash,
+    status: verification.status,
     network: 'LOCAL DEMONSTRATION NETWORK',
   });
 });
 
-app.post('/api/demo/tamper', (req, res) => {
+app.post('/api/demo/tamper', authMiddleware, (req, res) => {
   const record = demoData.evidence.find((item) => item.id === 'EVD-1046') || demoData.evidence[0];
   const originalHash = record.sha256;
-  const currentHash = `TAMPERED_${crypto.createHash('sha256').update(`${Date.now()}${record.id}`).digest('hex')}`;
-  record.sha256 = currentHash;
-  record.integrityStatus = 'TAMPERED';
-  record.tampered = true;
-  demoData.alerts.unshift({
-    id: `ALT-${Date.now()}`,
-    type: 'CRITICAL',
-    title: 'Tampering simulation active',
-    message: `${record.id} has been altered in local demonstration mode.`,
-    time: new Date().toISOString(),
-    resolved: false,
-  });
-  return res.json({ success: true, evidenceId: record.id, originalHash, currentHash, status: 'TAMPERING DETECTED' });
+  record.content = `${record.content} [tampered]`;
+  const currentHash = generateHash(record.content);
+  return res.json({ success: true, evidenceId: record.id, originalHash, currentHash, status: 'TAMPERING_DETECTED' });
 });
 
-app.post('/api/demo/restore', (req, res) => {
+app.post('/api/demo/restore', authMiddleware, (req, res) => {
   const record = demoData.evidence.find((item) => item.id === 'EVD-1046') || demoData.evidence[0];
-  const originalHash = 'd87f5d4e7cb1632319efc2a429d43f21908bc8d2d92d2d91036c048a7d7b0d1d';
-  record.sha256 = originalHash;
-  record.integrityStatus = 'VERIFIED';
-  record.tampered = false;
-  return res.json({ success: true, evidenceId: record.id, restoredHash: originalHash, status: 'RESTORED' });
+  record.content = record.registeredContent;
+  const restoredHash = generateHash(record.content);
+  return res.json({ success: true, evidenceId: record.id, restoredHash, status: 'RESTORED' });
 });
 
-app.get('/api/demo', (req, res) => {
+app.get('/api/demo', authMiddleware, (req, res) => {
+  const users = demoData.users.map(({ passwordHash, password, ...user }) => user);
+  const evidence = demoData.evidence.map(({ content, registeredContent, ...item }) => item);
   res.json({
     investigations: demoData.investigations,
-    evidence: demoData.evidence,
+    evidence,
     blockchain: demoData.blockchain,
     alerts: demoData.alerts,
     threatIntel: demoData.threatIntel,
     custodyEvents: demoData.custodyEvents,
-    users: demoData.users,
+    users,
     description: 'Live demonstration mode for Cyberproof Chain'
   });
 });
 
-app.post('/api/demo/run', (req, res) => {
+app.post('/api/demo/run', authMiddleware, (req, res) => {
   const demoEvidence = demoData.evidence.find((item) => item.id === 'EVD-1046') || demoData.evidence[0];
   const tampered = { ...demoEvidence, id: 'EVD-1046', integrityStatus: 'TAMPERED', tampered: true, sha256: 'XYZ789...' };
 
@@ -690,11 +719,44 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist', 'index.html'));
 });
 
-seedDemoUsers().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Cyberproof Chain backend running on http://localhost:${PORT}`);
-  });
-}).catch((error) => {
-  console.error('Failed to initialize auth seed:', error);
-  process.exit(1);
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  if (error.message === 'Origin is not allowed by CORS') {
+    return res.status(403).json({ error: 'Origin is not allowed by CORS' });
+  }
+  console.error('Unhandled request error:', error.message);
+  return res.status(500).json({ error: 'Internal server error' });
 });
+
+let server;
+let startPromise;
+
+function startServer() {
+  if (server) return Promise.resolve(server);
+  if (startPromise) return startPromise;
+
+  startPromise = seedDemoUsers()
+    .then(() => new Promise((resolve, reject) => {
+      const nextServer = app.listen(PORT, '0.0.0.0', () => {
+        server = nextServer;
+        console.log(`Cyberproof Chain backend listening on 0.0.0.0:${PORT}`);
+        resolve(nextServer);
+      });
+      nextServer.once('error', reject);
+    }))
+    .catch((error) => {
+      startPromise = undefined;
+      throw error;
+    });
+
+  return startPromise;
+}
+
+if (require.main === module) {
+  startServer().catch((error) => {
+    console.error('Failed to initialize backend:', error);
+    process.exit(1);
+  });
+}
+
+module.exports = { app, startServer, demoData, signToken };

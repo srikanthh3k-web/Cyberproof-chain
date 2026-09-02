@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { SectionHeader, Card, Button, ProgressBar } from '../App';
+import { apiFetch } from '../lib/api';
 
 export default function AIForensicsPage() {
   const [form, setForm] = useState({ evidence: 'malware_log.txt', logData: 'Suspicious auth events', ip: '192.168.1.44', domain: 'example-domain.com', hash: '8f4c2d7a7d5e0a1d4a5e8f6d4c1a2b3f1c5d6a7b8c9d0e1f2a3b4c5d6e7f8', url: 'http://example-domain.com/login' });
   const [result, setResult] = useState<any>(null);
 
   const analyze = async () => {
-    const response = await fetch('/api/forensics/analyze', {
+    const response = await apiFetch('/api/forensics/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),

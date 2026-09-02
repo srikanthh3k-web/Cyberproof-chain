@@ -101,12 +101,13 @@ Security:
 Create a .env file based on .env.example:
 
 PORT=3001
-CLIENT_URL=http://localhost:5173
+FRONTEND_URL=http://localhost:5173
+VITE_API_URL=
 GEMINI_API_KEY=
 OPENAI_API_KEY=
 BLOCKCHAIN_RPC_URL=
 PRIVATE_KEY=
-DATABASE_URL=postgresql://localhost:5432/cyberproof_chain
+DATABASE_URL=
 SESSION_SECRET=change_me_in_production
 
 ## Initial Admin Credential

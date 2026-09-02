@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { SectionHeader, StatusBadge, Card, LoadingState } from '../App';
 import { EvidenceItem } from '../types';
+import { apiFetch } from '../lib/api';
 
 export default function EvidenceVaultPage() {
   const [items, setItems] = useState<EvidenceItem[]>([]);
@@ -12,7 +13,7 @@ export default function EvidenceVaultPage() {
   const [form, setForm] = useState({ filename: 'malware_log.txt', fileType: 'TXT', fileSize: '1.4 MB', uploadedBy: 'analyst@cyberproof.local', investigationId: 'INV-1001', currentCustodian: 'Marcus Chen' });
 
   useEffect(() => {
-    fetch('/api/evidence').then((r) => r.json()).then((d) => setItems(d)).finally(() => setLoading(false));
+    apiFetch('/api/evidence').then((r) => r.json()).then((d) => setItems(d)).finally(() => setLoading(false));
   }, []);
 
   const calculateFileHash = async (file: File) => {
@@ -49,7 +50,7 @@ export default function EvidenceVaultPage() {
 
     setUploadState('Hashing file and registering evidence...');
     const payloadContent = fileContent || 'original evidence body';
-    const response = await fetch('/api/evidence/upload', {
+    const response = await apiFetch('/api/evidence/upload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

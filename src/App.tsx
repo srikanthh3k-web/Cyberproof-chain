@@ -16,6 +16,7 @@ import AlertsPage from './pages/AlertsPage';
 import TeamPage from './pages/TeamPage';
 import AdminPage from './pages/AdminPage';
 import SettingsPage from './pages/SettingsPage';
+import AuditLogsPage from './pages/AuditLogsPage';
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
 import SIHDemoPage from './pages/SIHDemoPage';
@@ -36,6 +37,7 @@ const navMap = [
   { label: 'Team', path: '/team' },
   { label: 'Admin', path: '/admin' },
   { label: 'Settings', path: '/settings' },
+  { label: 'Audit Logs', path: '/audit-logs' },
 ];
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -162,7 +164,7 @@ export default function App() {
                       </div>
                       <button className="icon-btn"><Bell size={17} /></button>
                       <div className="user-pill">
-                        <div className="avatar">{user.name.split(' ').map((n) => n[0]).join('').slice(0,2)}</div>
+                        <div className="avatar">{user.name.split(' ').map((n: string) => n[0]).join('').slice(0,2)}</div>
                         <div>
                           <div className="user-name">{user.name}</div>
                           <div className="user-role">{user.role}</div>
@@ -187,6 +189,7 @@ export default function App() {
                       <Route path="/team" element={<TeamPage />} />
                       <Route path="/admin" element={<AdminPage />} />
                       <Route path="/settings" element={<SettingsPage />} />
+                      <Route path="/audit-logs" element={<AuditLogsPage />} />
                       <Route path="*" element={<Navigate to="/dashboard" replace />} />
                     </Routes>
                   </div>
@@ -225,8 +228,8 @@ export function StatCard({ label, value, icon, tone = 'cyan' }: { label: string;
   );
 }
 
-export function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`panel ${className}`}>{children}</div>;
+export function Card({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  return <div className={`panel ${className}`} style={style}>{children}</div>;
 }
 
 export function StatusBadge({ status, type = 'success' }: { status: string; type?: 'success' | 'warning' | 'critical' | 'info' }) {

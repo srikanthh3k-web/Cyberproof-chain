@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SectionHeader, Card, StatusBadge } from '../App';
+import { apiFetch } from '../lib/api';
 
 export default function AdminPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -8,8 +9,8 @@ export default function AdminPage() {
 
   const refresh = async () => {
     const [usersResponse, healthResponse] = await Promise.all([
-      fetch('/api/users', { headers: { Authorization: `Bearer ${localStorage.getItem('cyberproof_token') || ''}` } }),
-      fetch('/api/security-health'),
+      apiFetch('/api/users', { headers: { Authorization: `Bearer ${localStorage.getItem('cyberproof_token') || ''}` } }),
+      apiFetch('/api/security-health'),
     ]);
     const usersData = await usersResponse.json();
     const healthData = await healthResponse.json();

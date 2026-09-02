@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { SectionHeader, Card, EmptyState } from '../App';
+import { apiFetch } from '../lib/api';
 
 export default function ThreatIntelligencePage() {
   const [indicator, setIndicator] = useState('192.168.1.44');
   const [result, setResult] = useState<any>(null);
 
   const search = async () => {
-    const response = await fetch(`/api/threat-intelligence/${encodeURIComponent(indicator)}`);
+    const response = await apiFetch(`/api/threat-intelligence/${encodeURIComponent(indicator)}`);
     const data = await response.json();
     setResult(data);
   };

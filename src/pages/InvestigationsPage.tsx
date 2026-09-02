@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Investigation } from '../types';
 import { SectionHeader, StatusBadge, Card, EmptyState, LoadingState } from '../App';
+import { apiFetch } from '../lib/api';
 
 export default function InvestigationsPage() {
   const [investigations, setInvestigations] = useState<Investigation[]>([]);
@@ -15,7 +16,7 @@ export default function InvestigationsPage() {
   const fetchInvestigations = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/investigations');
+      const response = await apiFetch('/api/investigations');
       const data = await response.json();
       setInvestigations(data);
     } catch {
@@ -54,7 +55,7 @@ export default function InvestigationsPage() {
     const endpoint = editingId ? `/api/investigations/${editingId}` : '/api/investigations';
     const method = editingId ? 'PATCH' : 'POST';
 
-    const response = await fetch(endpoint, {
+    const response = await apiFetch(endpoint, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -90,7 +91,7 @@ export default function InvestigationsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const response = await fetch(`/api/investigations/${id}`, { method: 'DELETE' });
+    const response = await apiFetch(`/api/investigations/${id}`, { method: 'DELETE' });
     const data = await response.json();
     if (!response.ok) {
       setMessage(data.error || 'Unable to archive investigation.');
@@ -100,8 +101,8 @@ export default function InvestigationsPage() {
     setMessage('Investigation archived.');
   };
 
-  const handleStatusChange = async (id: string, status: string) => {
-    const response = await fetch(`/api/investigations/${id}`, {
+  const handleStatusChange = async (id: string, status: Investigation['status']) => {
+    const response = await apiFetch(`/api/investigations/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SectionHeader, Card, Button, StatusBadge } from '../App';
+import { apiFetch } from '../lib/api';
 
 export default function VerificationPage() {
   const [identifier, setIdentifier] = useState('EVD-1042');
@@ -7,21 +8,21 @@ export default function VerificationPage() {
   const [statusText, setStatusText] = useState('');
 
   const verify = async () => {
-    const response = await fetch(`/api/verification/${encodeURIComponent(identifier)}`);
+    const response = await apiFetch(`/api/verification/${encodeURIComponent(identifier)}`);
     const data = await response.json();
     setResult(data);
     setStatusText(data.integrityStatus === 'TAMPERED' ? '🚨 EVIDENCE TAMPERING DETECTED' : '✓ INTEGRITY VERIFIED');
   };
 
   const simulateTampering = async () => {
-    const response = await fetch('/api/demo/tamper', { method: 'POST' });
+    const response = await apiFetch('/api/demo/tamper', { method: 'POST' });
     const data = await response.json();
     setResult({ ...data, evidenceFound: true, blockchainRecord: true, integrityStatus: 'TAMPERED', hash: data.currentHash, originalHash: data.originalHash, currentHash: data.currentHash });
     setStatusText('🚨 EVIDENCE TAMPERING DETECTED');
   };
 
   const restoreDemo = async () => {
-    const response = await fetch('/api/demo/restore', { method: 'POST' });
+    const response = await apiFetch('/api/demo/restore', { method: 'POST' });
     const data = await response.json();
     setResult({ ...data, evidenceFound: true, blockchainRecord: true, integrityStatus: 'VERIFIED', hash: data.restoredHash, originalHash: data.restoredHash, currentHash: data.restoredHash });
     setStatusText('✓ INTEGRITY VERIFIED');

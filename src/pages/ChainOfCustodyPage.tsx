@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { SectionHeader, Card, StatusBadge } from '../App';
+import { apiFetch } from '../lib/api';
 
 export default function ChainOfCustodyPage() {
   const [events, setEvents] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch('/api/custody').then((r) => r.json()).then((d) => setEvents(d));
+    apiFetch('/api/custody').then((r) => r.json()).then((d) => setEvents(d));
   }, []);
 
   return (

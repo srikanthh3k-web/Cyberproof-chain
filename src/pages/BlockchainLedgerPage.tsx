@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { SectionHeader, Card, StatusBadge } from '../App';
 import { BlockchainBlock } from '../types';
+import { apiFetch } from '../lib/api';
 
 export default function BlockchainLedgerPage() {
   const [blocks, setBlocks] = useState<any[]>([]);
   const [selected, setSelected] = useState<any | null>(null);
 
   useEffect(() => {
-    fetch('/api/blockchain/blocks').then((r) => r.json()).then((d) => {
+    apiFetch('/api/blockchain/blocks').then((r) => r.json()).then((d) => {
       const normalized = d.map((block: any) => ({
         ...block,
         index: block.blockIndex ?? block.index,
